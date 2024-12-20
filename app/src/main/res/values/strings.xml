@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">StoryApp</string>
+    <string name="signup">Daftar</string>
+    <string name="login">Masuk</string>
+    <string name="message_welcome_page">Punya cerita seru, pengalaman berkesan, atau momen spesial yang ingin dibagikan? Dengan Aplikasi Story, kamu bisa berbagi kisahmu dengan dunia!</string>
+    <string name="title_welcome_page">Selamat Datang di Aplikasi Story!</string>
+    <string name="title_signup_page">Jangan Lupa Lengkapi data dirimu di bawah ini ya</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="message_login_page">Masukkan dulu datamu ya</string>
+    <string name="title_login_page">Sudah siap untuk Bagikan Story Mu?</string>
+    <string name="name">Nama</string>
+    <string name="message_main_page">Selamat Bergabung di Aplikasi Story.</string>
+    <string name="greeting">Halo %1$s,</string>
+    <string name="logout">Keluar</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="story">Story</string>
+    <string name="nama">Nama</string>
+    <string name="error_message">Terjadi kesalahan. Data tidak tersedia.</string>
+    <string name="deskripsi">Deskripsi</string>
+    <string name="story_description">Story Description</string>
+    <string name="error_password_too_short">Password tidak boleh kurang dari 8 karakter</string>
+    <string name="title_activity_maps">MapsActivity</string>
+
+</resources>
