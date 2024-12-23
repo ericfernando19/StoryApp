@@ -37,6 +37,7 @@ class AddStoryActivity : AppCompatActivity() {
 
     private val launcherIntentCamera = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
+            Log.d("Camera", "Image captured successfully")
             currentImageUri?.let { showImage() }
         } else {
             Log.d("Camera", "Failed to capture image")
@@ -82,8 +83,11 @@ class AddStoryActivity : AppCompatActivity() {
         }
 
         binding.cameraButton.setOnClickListener {
-            if (checkPermissions()) startCamera()
-            else requestPermissions()
+            if (checkPermissions()) {
+                startCamera()
+            } else {
+                requestPermissions()
+            }
         }
 
         binding.uploadButton.setOnClickListener { uploadImage() }
@@ -109,18 +113,16 @@ class AddStoryActivity : AppCompatActivity() {
     private fun startCamera() {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         if (intent.resolveActivity(packageManager) != null) {
-            if (checkPermissions()) {
-                currentImageUri = getImageUriForCamera()
-                currentImageUri?.let { uri ->
-                    intent.putExtra(MediaStore.EXTRA_OUTPUT, uri)
-                    launcherIntentCamera.launch(intent)
-                } ?: run {
-                    Toast.makeText(this, "Gagal membuat URI untuk gambar", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                requestPermissions()
+            currentImageUri = getImageUriForCamera()
+            currentImageUri?.let { uri ->
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                launcherIntentCamera.launch(intent)
+            } ?: run {
+                Log.e("Camera", "Failed to create URI for camera output")
+                Toast.makeText(this, "Gagal membuat URI untuk gambar", Toast.LENGTH_SHORT).show()
             }
         } else {
+            Log.e("Camera", "No camera apps available")
             Toast.makeText(this, "Tidak ada aplikasi kamera yang ditemukan", Toast.LENGTH_SHORT).show()
         }
     }
@@ -142,7 +144,6 @@ class AddStoryActivity : AppCompatActivity() {
             binding.previewImageView.setImageURI(it)
         }
     }
-
 
     private fun uploadImage() {
         val description = binding.descriptionEditText.text.toString().trim()
@@ -172,7 +173,6 @@ class AddStoryActivity : AppCompatActivity() {
             Toast.makeText(this, "Pilih gambar terlebih dahulu", Toast.LENGTH_SHORT).show()
         }
     }
-
 
     private fun resizeImage(uri: Uri): File? {
         return try {

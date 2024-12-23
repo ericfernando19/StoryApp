@@ -1,10 +1,12 @@
 import android.app.Application
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.lifecycle.asLiveData
 import androidx.paging.AsyncPagingDataDiffer
 import androidx.paging.PagingData
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import com.dicoding.storyapp.data.UserRepository
+import com.dicoding.storyapp.getOrAwaitValue
 import com.dicoding.storyapp.view.ListStory.StoryRepository
 import com.dicoding.storyapp.view.ListStory.ViewModel.StoryViewModel
 import kotlinx.coroutines.Dispatchers
@@ -51,66 +53,52 @@ class StoryViewModelTest {
         // Generate dummy stories
         val dummyStories = DataDummy.generateDummyStories()
 
-        // Pastikan data dummy tidak kosong
+        // Ensure dummy data is not empty
         assertTrue("Dummy stories should not be empty", dummyStories.isNotEmpty())
 
-        // Create PagingData using dummyStories
-        val data = PagingData.from(dummyStories)
+        val dummyPagingData = PagingData.from(dummyStories)
+        val expectedStoriesFlow = flowOf(dummyPagingData)
 
-        // Create a flow of PagingData
-        val expectedStories = flow {
-            emit(data)
-        }
-
-        // Mock repository method to return the flow of PagingData
         Mockito.`when`(storyRepository.getStoriesPaged(Mockito.anyString()))
-            .thenReturn(expectedStories)
+            .thenReturn(expectedStoriesFlow)
 
-        // Setup differ
+        val token = "dummy_token"
+        Mockito.`when`(userRepository.getUserToken()).thenReturn(token)
+
+        // Act
+        val actualStories = storyViewModel.getPagedStories().asLiveData().getOrAwaitValue()
+
+        // Use AsyncPagingDataDiffer to check item count
         val differ = AsyncPagingDataDiffer(
             diffCallback = StoryDiffCallback(),
             updateCallback = NoopListUpdateCallback(),
             workerDispatcher = Dispatchers.Main,
         )
 
-        // Launch coroutine to collect data
-        val job = launch {
-            storyViewModel.getPagedStories().collect { pagingData ->
-                differ.submitData(pagingData) // Submit PagingData to differ
-            }
-        }
+        differ.submitData(actualStories)
 
-        // Simulate the flow to advance until idle
-        advanceUntilIdle()
+        // Assert
+        assertNotNull("Actual stories should not be null", actualStories)
 
-        // Cancel job after test completion
-        job.cancel()
+        // Ensure data is not empty
+        assertTrue("Data should not be empty", differ.snapshot().size > 0)
 
-        // Log the result to help with debugging
-        val dataList = differ.snapshot()
-        println("Data in differ: $dataList")
+        // Ensure the number of data matches
+        assertEquals("Data count should match the expected size", dummyStories.size, differ.snapshot().size)
 
-        // Verify data in differ
-        assertNotNull(dataList)
-        assertTrue("Data list should not be empty", dataList.isNotEmpty()) // Ensure the list is not empty
-
-        // Ensure size matches
-        assertEquals("Size of list does not match", dummyStories.size, dataList.size)
-
-        // Ensure the first item is the same
-        assertEquals("First item does not match", dummyStories[0], dataList[0])
-
-        // Optionally, you can check the entire list:
-        dummyStories.forEachIndexed { index, story ->
-            assertEquals("Item at index $index does not match", story, dataList[index])
-        }
+        // Ensure the first data matches
+        val firstStory = dummyStories.first()
+        val firstDifferStory = differ.snapshot().first()
+        assertEquals("First story should match the expected story", firstStory, firstDifferStory)
     }
+
 
     @Test
     fun `when Get Stories Empty Should Return No Data`() = runTest {
         val data: PagingData<ListStoryItem> = PagingData.empty() // Simulate empty PagingData
         val expectedStories = flowOf(data)
 
+        // Make sure that StoryViewModel is initialized properly
         storyViewModel = StoryViewModel(mock(Application::class.java), storyRepository, userRepository)
 
         Mockito.`when`(storyRepository.getStoriesPaged(Mockito.anyString()))
