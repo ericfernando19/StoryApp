@@ -7,6 +7,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.dicoding.storyapp.R
+import com.dicoding.storyapp.data.UserRepository
 import com.dicoding.storyapp.data.pref.dataStore
 import com.dicoding.storyapp.data.api.RetrofitInstance
 import com.dicoding.storyapp.data.pref.UserPreference
@@ -30,7 +31,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private val mapsViewModel: MapsViewModel by viewModels {
         MapsViewModelFactory(
-            MapsRepository(RetrofitInstance.apiService)
+            MapsRepository(RetrofitInstance.apiService),
+            UserRepository.getInstance(userPreference) // Gunakan getInstance()
         )
     }
 
@@ -47,23 +49,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         lifecycleScope.launch {
-            val token = userPreference.getUserToken()
-            if (token != null) {
-                mapsViewModel.fetchStoriesWithLocation(token)
-            } else {
-                Log.e("MapsActivity", "Token is null!")
-            }
+            mapsViewModel.fetchStoriesWithLocation()
         }
 
-        // Mengamati perubahan data stories setelah peta siap
         mapsViewModel.stories.observe(this) { stories ->
             Log.d("MapsActivity", "Received ${stories.size} stories.")
             if (isMapReady) {
                 if (stories.isEmpty()) {
-                    Log.e("MapsActivity", "No stories with location returned.")
                     binding.noStoriesTextView.visibility = View.VISIBLE
                 } else {
-                    Log.d("MapsActivity", "Found ${stories.size} stories with location.")
                     addMarkersToMap(stories)
                 }
             }
@@ -72,12 +66,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        Log.d("MapsActivity", "GoogleMap is ready!")
         mMap.uiSettings.isZoomControlsEnabled = true
+        isMapReady = true
 
-        isMapReady = true // Menandakan peta sudah siap
-
-        // Mengamati stories setelah peta siap
         mapsViewModel.stories.value?.let { stories ->
             if (stories.isNotEmpty()) {
                 addMarkersToMap(stories)
@@ -86,45 +77,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun addMarkersToMap(stories: List<StoryLocation>) {
-        mMap.clear() // Menghapus marker yang sudah ada sebelumnya
-        val builder = LatLngBounds.Builder()
-        var hasValidPoint = false
+        mMap.clear()
+        val boundsBuilder = LatLngBounds.Builder()
+        var hasValidLocation = false
 
-        stories.forEach { storyLocation ->
-            val lat = storyLocation.lat
-            val lon = storyLocation.lon
+        stories.forEach { story ->
+            val lat = story.lat
+            val lon = story.lon
             if (lat != null && lon != null) {
                 val latLng = LatLng(lat, lon)
                 mMap.addMarker(
                     MarkerOptions()
                         .position(latLng)
-                        .title(storyLocation.story.name)
-                        .snippet(storyLocation.story.description) // Menambahkan deskripsi sebagai snippet
+                        .title(story.story.name)
+                        .snippet(story.story.description)
                 )
-                builder.include(latLng)
-                hasValidPoint = true
+                boundsBuilder.include(latLng)
+                hasValidLocation = true
             }
         }
 
-        if (hasValidPoint) {
-            val bounds = builder.build()
+        if (hasValidLocation) {
+            val bounds = boundsBuilder.build()
             val padding = 200
-
             if (stories.size == 1) {
-                // Jika hanya ada 1 marker, gunakan CameraUpdateFactory.newLatLng
                 val singleLatLng = LatLng(stories[0].lat!!, stories[0].lon!!)
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(singleLatLng, 15f))
             } else {
-                // Jika ada lebih dari 1 marker, gunakan bounds
-                val cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding)
-                mMap.moveCamera(cameraUpdate)
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
             }
         } else {
-            Log.e("MapsActivity", "No valid locations to display on the map.")
             binding.noStoriesTextView.visibility = View.VISIBLE
         }
     }
 }
-
-
-

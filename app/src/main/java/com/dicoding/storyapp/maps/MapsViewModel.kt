@@ -7,8 +7,12 @@ import androidx.lifecycle.viewModelScope
 import com.dicoding.storyapp.data.model.StoryLocation
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.dicoding.storyapp.data.UserRepository
 
-class MapsViewModel(private val repository: MapsRepository) : ViewModel() {
+class MapsViewModel(
+    private val repository: MapsRepository,
+    private val userRepository: UserRepository
+) : ViewModel() {
 
     private val _stories = MutableLiveData<List<StoryLocation>>()
     val stories: LiveData<List<StoryLocation>> get() = _stories
@@ -17,33 +21,46 @@ class MapsViewModel(private val repository: MapsRepository) : ViewModel() {
     val errorMessage: LiveData<String> get() = _errorMessage
 
     // Fungsi untuk mengambil cerita yang memiliki lokasi
-    fun fetchStoriesWithLocation(token: String) {
+    fun fetchStoriesWithLocation() {
         viewModelScope.launch {
             try {
-                val storyResponse = repository.getStoriesWithLocation(token)
+                // Ambil token dari UserRepository
+                val token = userRepository.getUserToken()
 
-                // Pastikan membaca data dari listStory, bukan stories
-                val storiesWithLocation = storyResponse.listStory.mapNotNull { storyItem ->
-                    val lat = storyItem.lat
-                    val lon = storyItem.lon
-
-                    if (lat != null && lon != null) {
-                        StoryLocation(
-                            story = storyItem,
-                            lat = lat,
-                            lon = lon
-                        )
-                    } else {
-                        Log.e("MapsViewModel", "Invalid location for story: ${storyItem.name}")
-                        null
-                    }
-                }
-
-                // Update LiveData berdasarkan hasil filter
-                if (storiesWithLocation.isNotEmpty()) {
-                    _stories.postValue(storiesWithLocation)
+                // Pastikan token tidak kosong atau null
+                if (token.isNullOrEmpty()) {
+                    _errorMessage.postValue("Token tidak tersedia, silakan login terlebih dahulu")
                 } else {
-                    _errorMessage.postValue("No valid locations found.")
+                    // Log token untuk debugging
+                    Log.d("MapsViewModel", "Using token: $token")
+
+                    // Panggil API untuk mendapatkan data cerita
+                    val storyResponse = repository.getStoriesWithLocation(token) // Tanpa "Bearer" jika tidak diperlukan
+
+
+                    // Pastikan membaca data dari listStory, bukan stories
+                    val storiesWithLocation = storyResponse.listStory.mapNotNull { storyItem ->
+                        val lat = storyItem.lat
+                        val lon = storyItem.lon
+
+                        if (lat != null && lon != null) {
+                            StoryLocation(
+                                story = storyItem,
+                                lat = lat,
+                                lon = lon
+                            )
+                        } else {
+                            Log.e("MapsViewModel", "Invalid location for story: ${storyItem.name}")
+                            null
+                        }
+                    }
+
+                    // Update LiveData berdasarkan hasil filter
+                    if (storiesWithLocation.isNotEmpty()) {
+                        _stories.postValue(storiesWithLocation)
+                    } else {
+                        _errorMessage.postValue("No valid locations found.")
+                    }
                 }
 
             } catch (e: Exception) {
@@ -52,5 +69,4 @@ class MapsViewModel(private val repository: MapsRepository) : ViewModel() {
             }
         }
     }
-
 }

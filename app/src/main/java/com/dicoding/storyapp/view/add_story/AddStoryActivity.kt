@@ -35,13 +35,13 @@ class AddStoryActivity : AppCompatActivity() {
     private lateinit var addStoryViewModel: AddStoryViewModel
     private var userId: String? = null
 
-    private val launcherIntentCamera = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            Log.d("Camera", "Image captured successfully")
-            currentImageUri?.let { showImage() }
+    private val launcherIntentCamera = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { isSuccess ->
+        if (isSuccess) {
+            showImage()
         } else {
-            Log.d("Camera", "Failed to capture image")
-            Toast.makeText(this, "Gagal mengambil gambar", Toast.LENGTH_SHORT).show()
+            currentImageUri = null
         }
     }
 
@@ -111,20 +111,8 @@ class AddStoryActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if (intent.resolveActivity(packageManager) != null) {
-            currentImageUri = getImageUriForCamera()
-            currentImageUri?.let { uri ->
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, uri)
-                launcherIntentCamera.launch(intent)
-            } ?: run {
-                Log.e("Camera", "Failed to create URI for camera output")
-                Toast.makeText(this, "Gagal membuat URI untuk gambar", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            Log.e("Camera", "No camera apps available")
-            Toast.makeText(this, "Tidak ada aplikasi kamera yang ditemukan", Toast.LENGTH_SHORT).show()
-        }
+        currentImageUri =getImageUri(this)
+        launcherIntentCamera.launch(currentImageUri!!)
     }
 
     private fun getImageUriForCamera(): Uri? {
